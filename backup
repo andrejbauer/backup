@@ -17,7 +17,7 @@ use strict;
 
 my $configuration =
   {
-   VERSION => "backup 1.0 (12 March 2001)",
+   VERSION => "backup 2008-04-29",
    CLIENT_BASEDIR => undef,
    SERVER_BASEDIR => undef,
    MODE => undef,
@@ -94,12 +94,12 @@ if (!defined($configuration->{MODE})) {
 
 if (($configuration->{MODE} eq "--help") or ($configuration->{MODE} eq "-h")) {
   print $usage;
-  exit 0;  
+  exit 0;
 }
 
 if (($configuration->{MODE} eq "--version") or ($configuration->{MODE} eq "-v")) {
   print $configuration->{VERSION}, "\n";
-  exit 0;  
+  exit 0;
 }
 
 if (($configuration->{MODE} ne "client") and
