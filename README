@@ -1,0 +1,238 @@
+INSTALLATION INSTRUCTIONS
+=========================
+
+In order for this software to work you need to install ssh and rsync
+on the machines that will use the software (the backup server and the
+backup clients).
+
+Currently the backup scripts only work with ssh version 1. I promise
+to fix this soon.
+
+You need to understand the basics of ssh in order to use the backup
+scripts.
+
+
+HOW TO INSTALL THE BACKUP SCRIPTS
+---------------------------------
+
+1. Unpack the "backup" directory in a reasonable location. We assume
+here the location is /usr/local/lib/backup.
+
+2. Edit the file /usr/local/lib/backup/backup and fix the "use lib"
+line at the beginning to
+
+	lib "/usr/local/lib/backup";
+
+3. Make sure the first line of /usr/local/lib/backup/backup reflects
+the correct location of perl (you can find out where perl is by typing
+"which perl"). Usually this is /usr/bin/perl.
+
+4. Make a soft link from /usr/local/bin to /usr/local/lib/backup/backup:
+
+	ln -s /usr/local/lib/backup/backup /usr/local/bin
+
+At this point you may call the executable something else, for example
+if you want it to be called "smart-backup" you link it like this:
+
+	ln -s /usr/local/lib/backup/backup /usr/local/bin/smart-backup
+
+If you do this, then in the steps below you should replace "backup"
+with "smart-backup".
+
+5. Test the executable by running "backup". It should say this:
+
+	$ backup
+	You must specify a mode. Type "backup --help" for usage.
+
+
+HOW TO CREATE THE INITIAL BACKUP REPOSITORY
+-------------------------------------------
+
+Suppose we want to make backups of directory /home/user on machine
+machine-A.company.com. Suppose the backups will reside on
+/var/backup/machine-A/home/user on machine machine-B.company.com.
+
+For simplicty we assume that on both machines there is a username
+"backer" which will be used to execute the backup scripts. This
+username does not have to be special. If you are not a system
+administrator, you can just use your own username, for example. (In
+fact, if you are backing up a single user's home directory it is best
+to run the scripts under that user's id).
+
+1. Create a directory called /var/backup/machine-A/home/user on
+machine-B.company.com. It should be owned by "backer" and backer
+should have read-write access to it.
+
+The backup scripts can be run either on the client (in our case
+machine-A.company.com) or the server (in our case
+machine-B.company.com). The machine that runs the scripts must be able
+to access the other machine via ssh. So the next step is to setup the
+correct ssh identity keys. You may skip step 2 if you never run the
+scripts from the client, and skip step 3 if you never run the scripts
+from the server (which is typical if the client is a laptop, since
+then the server has no idea when the laptop is connected, or what its
+IP address is).
+
+2. Provide a password-free ssh key which will let machine-A access
+machine-B. This is done as follows. On machine-A, create a key pair:
+
+   $ ssh-keygen -N "" -f machine-A_to_machine-B
+   Generating RSA keys:  ..........oooooO........................
+   Key generation complete.
+   Your identification has been saved in machine-A_to_machine-B.
+   Your public key has been saved in machine-A_to_machine-B.pub.
+   The key fingerprint is:
+   1024 ce:53:f4:11:ee:cb:17:99:3a:4d:ef:a7:9d:03:4a:10 root@machine-A
+
+The file
+
+   machine-A_to_machine-B
+
+now contains the secret key that machine-A will use to access
+machine-B. Put this file in a reasnoable location, for example
+/home/user/.ssh/machine-A_to_machine-B. Make sure the file is not
+readable by everyone.
+
+The file 
+
+   machine-A_to_machine-B.pub 
+
+contains the public key. This key should be added to the file
+~backer/.ssh/authorized_keys on machine-B. For extra protection, you
+should only allow authorization with this key from machine-A. You do
+this by adding a line like this to authorized_keys:
+
+   from="machine-A.company.com" <public_key_here>
+
+Test if everything is working. User backer on machine-A ought to be
+able to ssh into machine-B as backer with
+
+   ssh -i /home/user/.ssh/machine-A_to_machine-B backer@machine-B.company.com
+
+NOTE: It may be the case that on machine-A backup will always be run
+by the user interactively (the common case when machine-A is a
+laptop). In this case, if user has a working ssh-agent, it will be
+possible to user his default ~/.ssh/idenitity key instead of a newly
+generated one. If you can avoid making password-free ssh key pairs,
+you should.
+
+
+3. Provide a password-free ssh key which will let machine-B access
+machine-A. This is done just like in step 2, only in reverse:
+
+ On machine-B, create a key pair:
+
+   $ ssh-keygen -N "" -f machine-B_to_machine-A
+   Generating RSA keys:  ..........oooooO........................
+   Key generation complete.
+   Your identification has been saved in machine-A_to_machine-B.
+   Your public key has been saved in machine-A_to_machine-B.pub.
+   The key fingerprint is:
+   1024 ce:53:f4:11:ee:cb:17:99:3a:4d:ef:a7:9d:03:4a:10 root@machine-A
+
+The file
+
+   machine-B_to_machine-A
+
+now contains the secret key that machine-B will use to access
+machine-A. Put this file in a reasonable location, for example
+/var/backup/machine-A/home/user/. Make sure the file is not
+readable by everyone.
+
+The file 
+
+   machine-A_to_machine-B.pub 
+
+contains the public key. This key should be added to the file
+~backer/.ssh/authorized_keys on machine-A. For extra protection, you
+should only allow authorization with this key from machine-B. You do
+this by adding a line like this to authorized_keys:
+
+   from="machine-B.company.com" <public_key_here>
+
+Test if everything is working. User backer on machine-B ought to be
+able to ssh into machine-A as backer with
+
+   ssh -i /var/backup/machine-A/home/user/machine-A_to_machine-B \
+          backer@machine-B.company.com
+
+
+4. Copy the file /usr/local/lib/backup/backup.conf to
+/var/backup/machine-A/home/user and edit it to your liking.
+In particular, you should correct the "client" line so that it says
+
+   client backer@machine-A.comapny.com:/home/user
+
+and you should correct the sshid line to
+
+   sshid machine-B_to_machine-A
+
+(assuming you put the idenitity file in /var/backup/machine-A/home/user,
+as described in step 3).
+
+5. You only need to perform this step if you are going to run backup
+scripts on machine-A. On machine-A you need to specify the location of
+the backup server and the ssh identity file to use. Create the file
+/home/user/.backup and put this in it:
+
+/home/user/.ssh/machine-A_to_machine-B backer@macine-B.company.com:/var/backup/machine-A/home/user
+
+The general format of this file is
+
+<ssh_identity> <location_of_backup>
+
+In our example we assumed in step 2 that you put the ssh idenitity
+file in /home/user/.ssh/machine-A_to_machine-B.
+
+6. Now you should be ready to create the inital backup. This can be
+done from machine-A or from machine-B, or just from one of them if you
+only performed on of the steps 2 and 3 above. Do EITHER a) OR b):
+
+a) On machine-A as user backer run
+
+   backup client /home/user
+
+b) On machine-B as user backer run
+
+   backup server /var/backup/machine-A/home/user
+
+Watch the backup being made. If you do (a), you will find a log file
+in /home/user/.backup.log after the backup is done. If you run (b),
+you will find such a file in /var/backup/machine-A/home/user/backup.log.
+
+After you have made the backup for the first time, you may try running
+it again immediately just to see how much faster it will be in normal
+operation.
+
+
+HOW THE BACKUP ARCHIVE IS ORGANIZED
+-----------------------------------
+
+On machine-B in /var/backup/machine-A/home/user you will find the
+successive backups in directories with names like these:
+
+   backup_2001_05_08_18_22_19
+
+The numbers are year, month, day, hour, minute, second. The link
+"latest" always point to the newest backup, so you don't have to scan
+all the backup_yyyy_mm_dd_hh_mm_ss directories every time to discover
+the latest one. You can delete such a directory if you decide that you
+do not need it anymore.
+
+A directoriy called
+
+  inprogress_yyyy_mm_dd_hh_mm_ss
+
+contains a backup that is currently being made. If no backup is
+running, then it is a left-over from a backup that failed to complete
+for some reason. You can delete such a directory if you are sure no
+backup is being made a the moment.
+
+A directory called
+
+  deleting_yyyy_mm_dd_hh_mm_ss
+
+contains an old backup that is being deleted at the moment. If no
+backup is running, then it is a left-over from a backup that failed to
+complete for some reason. You can delete such a directory if you are
+sure no backup is being made a the moment.

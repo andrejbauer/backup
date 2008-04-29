@@ -1,0 +1,49 @@
+THE NEW SCHEME
+
+
+The scheme is always as follows:
+
+
+ +------+                      +------+
+ |CLIENT|                      |SERVER|
+ |      |======ssh tunnel======|cp -al|
+ |rsyncd|                      |rsync |
+ +------+                      +------+
+
+
+The only difference is in who initiates the backup.
+
+Only one ssh connection is open during one backup.
+
+Only predetermined and fixed commands are run remotely via ssh.
+
+
+Client initiated backup:
+1. Client starts rsyncd
+2. Client connects to server with ssh,
+   does rsyncd port forwarding to the server
+3. The ssh connection initiates a fixed command,
+   which starts the backup.
+
+Server initiated backup:
+1. Server connects to client with ssh,
+   does port forwarding for rsyncd
+2. Client starts a fixed command which starts the
+   rsyncd server.
+3. Client signals to the server that the server that
+   rsyncd is ready.
+5. Server proceeds with backup.
+
+
+Here is what we would write into ~/.ssh/.authorized_keys on the server
+
+    from="client.machine.com" command="/initiate/backup" no-agent-forwarding\
+    no-X11-forwarding no-pty permitopen="client.machine.com:port" <rsa_key>
+
+
+Here is what we would write into ~/.ssh/.authorized_keys on the client
+  
+    from="server.machine.com" command="/initiate/rsyncd" no-agent-forwarding\
+    no-X11-forwarding no-pty permitopen="server.machine.com:port" <rsa_key>
+
+

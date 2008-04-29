@@ -1,0 +1,248 @@
+#!/usr/bin/perl
+# -*- perl -*-
+
+##################################################
+
+use lib "/usr/local/backup";
+
+use Backup;
+use BackupClient;
+use BackupServer;
+use Getopt::Long;
+
+use strict;
+
+##################################################
+# configuration variables
+
+my $configuration =
+  {
+   VERSION => "backup 1.0 (12 March 2001)",
+   CLIENT_BASEDIR => undef,
+   SERVER_BASEDIR => undef,
+   MODE => undef,
+   CLIENT => undef,
+   CLIENT_CONF_FILE => ".backup",
+   CLIENT_LOG_FILE => ".backup.log",
+   CLIENT_SSH_ID => ".backup_ssh_id",
+   SERVER_CONF_FILE => "backup.conf",
+   SERVER_LOG_FILE => "backup.log",
+   SERVER_SSH_ID => "backup.ssh_id",
+   SERVER => undef,
+   OPTIONS_RSYNC => undef,
+   EMAIL_SUCC => undef,
+   EMAIL_FAIL => undef,
+   LOG_FILE => undef,
+   LOG => 1,
+   DELETE => 1,
+   BACKUP => 1,
+   DRY_RUN => 0,
+   EXCLUDE => [],
+   KEEP_DAILY => 7,
+   KEEP_WEEKLY => 4,
+   KEEP_MONTHLY => 6,
+   KEEP_HALFYEARLY => 2,
+   KEEP_YEARLY => 4
+  };
+
+
+##################################################
+# the usage message
+
+my $usage = <<EOT
+ Usage: backup <mode> [options] <directory>
+        backup --version
+        backup --help
+
+ Modes:
+ client		this is the client
+ server		this is the server
+
+ Commands:
+ --help, -h		print this help and exit
+ --verbose, -v		verbose output
+ --quiet, -q            suppress all output
+ --version              print version and exit
+ --backup               make a fresh backup (default)
+ --nobackup             do not make a fresh backup
+ --delete		delete obsolete backups (default)
+ --nodelete		do not delete any old backups
+
+ Options:
+ --rsync=<opts>         pass command-line arguments <opts> to rsync
+ --dry-run              just show what you would do instead of doing it
+ --log                  write a log to a logfile (default)
+ --nolog                do not write to a logfile
+ --logfile=<f>          specify a non-default logfile
+ --onfail=<mail>	send log by e-mail to <mail> on failure
+ --onsucc=<mail>	send log by e-mail to <mail> on success
+
+EOT
+;
+
+##################################################
+# get the mode
+
+$configuration->{MODE} = shift;
+
+if (!defined($configuration->{MODE})) {
+  print STDERR "You must specify a mode. Type \"backup --help\" for usage.\n";
+  exit 1;
+}
+
+### special case is --help
+
+if (($configuration->{MODE} eq "--help") or ($configuration->{MODE} eq "-h")) {
+  print $usage;
+  exit 0;  
+}
+
+if (($configuration->{MODE} eq "--version") or ($configuration->{MODE} eq "-v")) {
+  print $configuration->{VERSION}, "\n";
+  exit 0;  
+}
+
+if (($configuration->{MODE} ne "client") and
+    ($configuration->{MODE} ne "server")) {
+  print STDERR "Unknown mode \'", $configuration->{MODE}."\'. Type \'backup --help\' for help.\n";
+  exit 1;
+}
+
+##################################################
+# get options
+
+my $opt_help=0;         # --help, -h
+my $opt_version=0;      # --version
+my $opt_quiet=0;	# --quiet, -q
+my $opt_verbose=0;      # --verbose, -v
+my $opt_logfile;        # --logfile=<file>
+my $opt_log=1;          # --log, --nolog
+my $opt_onfail;         # --onfail=<mail>
+my $opt_onsucc;         # --onsucc=<mail>
+my $opt_ssh;		# --ssh="<opts>"
+my $opt_rsync;          # --rsync="<opts>"
+my $opt_delete=1;       # --delete, --nodelete
+my $opt_backup=1;       # --backup, --nobackup
+my $opt_dry_run=0;      # --dry-run
+
+my $res = GetOptions
+  (
+   "help|h"        => \$opt_help,
+   "version"       => \$opt_version,
+   "quiet|q"       => \$opt_quiet,
+   "verbose|v"     => \$opt_verbose,
+   "logfile=s"     => \$opt_logfile,
+   "log!"          => \$opt_log,
+   "onfail=s"      => \$opt_onfail,
+   "onsucc=s"      => \$opt_onsucc,
+   "ssh=s"         => \$opt_ssh,
+   "rsync=s"       => \$opt_rsync,
+   "delete!"       => \$opt_delete,
+   "backup!"       => \$opt_backup,
+   "dry-run!"      => \$opt_dry_run
+  );
+
+if (! $res) {
+  print STDERR "Type \"backup --help\" for usage.\n";
+  exit 1;
+}
+
+### copy options to the configuration
+
+$configuration->{OPTIONS_SSH} = $opt_ssh;
+$configuration->{OPTIONS_RSYNC} = $opt_rsync;
+$configuration->{EMAIL_FAIL} = $opt_onfail;
+$configuration->{EMAIL_SUCC} = $opt_onsucc;
+$configuration->{LOG} = $opt_log;
+$configuration->{VERBOSE} = $opt_verbose;
+$configuration->{QUIET} = $opt_quiet;
+$configuration->{DELETE} = $opt_delete;
+$configuration->{BACKUP} = $opt_backup;
+$configuration->{DRY_RUN} = $opt_dry_run;
+
+if (defined($opt_logfile)) {
+  $configuration->{LOG_FILE} = $opt_logfile;
+}
+elsif ($configuration->{MODE} eq "client") {
+  $configuration->{LOG_FILE} = $configuration->{CLIENT_LOG_FILE};
+}
+else {
+  $configuration->{LOG_FILE} = $configuration->{SERVER_LOG_FILE};
+}
+
+### handle special flags
+
+if ($opt_version) {
+  print $configuration->{VERSION}, "\n";
+  exit 0;
+}
+
+if ($opt_help) {
+  print $usage;
+  exit 0;
+}
+
+### what we do next depends on the mode
+
+if ($configuration->{MODE} eq "client") {
+  ### client mode
+
+  ### we pick up <directory>
+
+  $configuration->{CLIENT_BASEDIR} = shift;
+
+  if (!defined($configuration->{CLIENT_BASEDIR})) {
+    print STDERR "You must specify the base directory. Type \"backup --help\" for usage\n";
+    exit 1;
+  }
+
+  ### run the initialization code
+
+  init_run($configuration);  # init_run_remote gets called later
+  log_init($configuration);
+
+  ### start the work
+
+  log_verbose "This is client mode.\n";
+
+  log_message "Base directory is " . $configuration->{CLIENT_BASEDIR} . "\n";
+
+  ### hand the control to the BackupClient
+
+  BackupClient::handle($configuration);
+
+}
+elsif ($configuration->{MODE} eq "server") {
+  ### server mode
+
+  ### we pick up <directory>
+
+  $configuration->{SERVER_BASEDIR} = shift;
+
+  if (!defined($configuration->{SERVER_BASEDIR})) {
+    print STDERR "You must specify the base directory. Type \"backup --help\" for usage\n";
+    exit 1;
+  }
+
+  ### run the initialization code
+
+  init_run($configuration);
+  log_init($configuration);
+
+  ### start the work
+
+  log_verbose "This is client mode.\n";
+
+  log_message "Base directory is " . $configuration->{SERVER_BASEDIR} . "\n";
+
+  ### hand the control to the BackupServer
+
+  BackupServer::handle($configuration);
+
+}
+else {
+  die "I choose to crash.\n";
+}
+
+##################################################
+# end of file

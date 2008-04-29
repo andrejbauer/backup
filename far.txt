@@ -1,0 +1,80 @@
+INITIALIZATION OF FAR BACKUPS
+=============================
+
+Assume we have already set up remote backups on remote.machine.com and
+want to set up far backups on far.mahchine.com.
+
+1. Make sure remote.machine.com supports encrypted loopback devices,
+   in addition to whatever is needed for remote backups.
+
+2. Make sure far.machine.com supports ssh and rsync.
+
+PROCEDURE ON remote.machine.com:
+--------------------------------
+
+3. On remote.machine.com create an encrypted loopback device, as follows.
+   Input parameters:
+
+   <size> = max total size of backups, in gigabytes
+   <dir>  = directory in which to put the loopback file
+   <password>
+
+   Run:
+
+	dd if=/dev/zero of=<dir>/block bs=1GB seek=<size> count=0
+	echo "<password>" | losetup -e aes -p 0 /dev/loop0 <dir>/block
+	mke2fs /dev/loop0
+        mkdir <dir>/far
+
+   Add the following line to your /etc/fstab on remote.machine.com:
+
+	<file>    <dir>/far    ext2    encryption=aes,user     0       0
+
+4. Mount the loopback device:
+
+	echo "<password>" | mount <dir>/far -p 0
+
+5. Rsync the ordinary backups into the loopback. Suppose the backups
+   live in the directory <backup_dir>:
+
+	rsync -azHS <backup_dir> <dir>/far
+
+6. Unmount the loopback:
+
+        umount <dir>/far
+
+7. Create specialized ssh keys:
+
+	ssh-keygen -N "" -f <dir>/backup_id_rsa -t rsa -b 1024
+
+8. Transport backup_id_rsa.pub to far.machine.com.
+
+
+PROCEDURE ON far.machine.com:
+-----------------------------
+
+9. On far.machine.com do the following:
+
+   - Create an account, say backup-user, with home directory /home/backup-user,
+     make sure it has a functioning ~/.ssh directory with an authorized_keys
+     file. If it doesn't, run ssh from it then do, as backup-user:
+
+	touch ~/.ssh/authorized_keys
+	chmod go-rw ~/.ssh/authorized_keys
+
+   - Add the following SINGLE line to /home/backup-user/.ssh/authorized_keys:
+
+no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty,command="/usr/bin/rsync --sparse --times --block-size=65536 --server /home/backup-user/block" <content-of-backup_id_rsa.pub>
+
+     NOTE: the above rsync command may not be quite right. If you encounter problems,
+     remove the command option from the authorized_keys, run backup and see (using
+     "ps auxwww | grep rsync" what is the actual command that should be running).
+
+INITIAL TRANSFER OF THE BACKUP:
+-------------------------------
+
+10. Rsync the block file from remote.machine.com to far.machine.com.
+    Run this on remote.machine.com:
+
+	rsync --sparse --times -e 'ssh -i <dir>/backup_id_rsa -l backup-user' \
+              <dir>/block far.machine.com:/home/backup-user/block
