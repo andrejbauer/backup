@@ -1,19 +1,22 @@
 INSTALLATION INSTRUCTIONS
 =========================
 
-In order for this software to work you need to install ssh and rsync
-on the machines that will use the software (the backup server and the
-backup clients).
+PREREQUISITES
+-------------
 
-Currently the backup scripts only work with ssh version 1. I promise
-to fix this soon.
+In order for this software to work you need to install perl, ssh and
+rsync on the machines that will use the software (the backup server
+and the backup clients).
 
 You need to understand the basics of ssh in order to use the backup
 scripts.
 
 
-HOW TO INSTALL THE BACKUP SCRIPTS
----------------------------------
+INSTALL THE BACKUP SCRIPTS
+--------------------------
+
+Perform this step on every machine that will use backup (clients and
+servers).
 
 1. Unpack the "backup" directory in a reasonable location. We assume
 here the location is /usr/local/lib/backup.
@@ -77,12 +80,11 @@ IP address is).
 machine-B. This is done as follows. On machine-A, create a key pair:
 
    $ ssh-keygen -N "" -f machine-A_to_machine-B
-   Generating RSA keys:  ..........oooooO........................
-   Key generation complete.
+   Generating public/private rsa key pair.
    Your identification has been saved in machine-A_to_machine-B.
    Your public key has been saved in machine-A_to_machine-B.pub.
    The key fingerprint is:
-   1024 ce:53:f4:11:ee:cb:17:99:3a:4d:ef:a7:9d:03:4a:10 root@machine-A
+   84:1a:92:d5:08:a4:8c:73:48:e2:eb:4d:49:4c:b6:14 backer@machine-A
 
 The file
 
@@ -90,7 +92,7 @@ The file
 
 now contains the secret key that machine-A will use to access
 machine-B. Put this file in a reasnoable location, for example
-/home/user/.ssh/machine-A_to_machine-B. Make sure the file is not
+~backer/.ssh/machine-A_to_machine-B. Make sure the file is not
 readable by everyone.
 
 The file 
@@ -104,15 +106,15 @@ this by adding a line like this to authorized_keys:
 
    from="machine-A.company.com" <public_key_here>
 
-Test if everything is working. User backer on machine-A ought to be
+Test whether everything is working. User backer on machine-A ought to be
 able to ssh into machine-B as backer with
 
-   ssh -i /home/user/.ssh/machine-A_to_machine-B backer@machine-B.company.com
+   ssh -i ~backer/.ssh/machine-A_to_machine-B backer@machine-B.company.com
 
 NOTE: It may be the case that on machine-A backup will always be run
 by the user interactively (the common case when machine-A is a
 laptop). In this case, if user has a working ssh-agent, it will be
-possible to user his default ~/.ssh/idenitity key instead of a newly
+possible to user his default SSH idenitity key instead of a newly
 generated one. If you can avoid making password-free ssh key pairs,
 you should.
 

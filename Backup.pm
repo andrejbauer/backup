@@ -193,7 +193,7 @@ sub parse_config {
     next if (($line =~ m/^\#/) or ($line =~ m/^\s*$/));
 
     # line matches 'keyword = value(s)' or 'keyword value(s)'
-    if ($line =~ m/^\s*(\w+)\s*=?\s*(.*)$/) {
+    if ($line =~ m/^\s*([a-zA-Z0-9_\-]+)\s*=?\s*(.*)$/) {
       my $opt = lc $1;
       my $val = $2;
 
@@ -266,8 +266,12 @@ sub run {
   if (!$dry_run) {
     log_message `$command 2>&1` . "\n";
     my $status = $? >> 8;
-    if ($status) {
-      # the process died in some unexpected way
+    if ($status == 24) {
+      # a file disappeared during backup
+      low_message "\nSome files disappeared during the backup process.\n"
+    }
+    elsif ($status) {
+      # the process died in an unexpected way
       log_fatal "\nThe last command failed with exit status $status.\n";
     }
   }
