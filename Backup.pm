@@ -268,7 +268,7 @@ sub run {
     my $status = $? >> 8;
     if ($status == 24) {
       # a file disappeared during backup
-      low_message "\nSome files disappeared during the backup process.\n"
+      log_message "\nSome files disappeared during the backup process.\n"
     }
     elsif ($status) {
       # the process died in an unexpected way
