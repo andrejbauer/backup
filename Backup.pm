@@ -230,9 +230,16 @@ sub parse_config {
       elsif ($opt eq "sshid") {
 	$configuration->{SERVER_SSH_ID} = $val;
       }
+      elsif ($opt eq "secondary_sshid") {
+        $configuration->{SECONDARY_SSH_ID} = $val;
+      }
       elsif ($opt eq "client") {
 	($configuration->{CLIENT},
 	 $configuration->{CLIENT_BASEDIR}) = parse_ssh_location($val);
+      }
+      elsif ($opt eq "secondary") {
+	($configuration->{SECONDARY},
+	 $configuration->{SECONDARY_BASEDIR}) = parse_ssh_location($val);
       }
       elsif ($opt eq "rsync-options") {
 	$configuration->{OPTIONS_RSYNC} .= " $val";

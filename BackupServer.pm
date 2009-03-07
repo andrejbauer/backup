@@ -29,6 +29,55 @@ sub get_config_file {
 }
 
 ##################################################
+# Run remote routines on secondary server. This is
+# suboptimal and should be joined with similar routines
+# in BackupClient.
+
+my $run2_wrapper; 
+my $dry_run2;
+
+sub init_run2_remote {
+  my $configuration = shift;
+
+  $dry_run2 = $configuration->{DRY_RUN};
+
+  ### at this point the $configuration should know
+  ### where the secondary server is, and what ssh identity to use
+
+  my $secondary = $configuration->{SECONDARY};
+  my $sshid2 = Backup::canonical_filename($configuration->{SECONDARY_SSH_ID},
+					  $configuration->{SERVER_BASEDIR});
+
+  $run2_wrapper = "ssh -x -a -q -n -i $sshid2 $secondary ";
+
+  log_verbose "\nWrapper for remote commands is: $run2_wrapper\n";
+}
+
+sub run2_remote {
+  my $command = shift;
+
+  log_message "\n$run2_wrapper \'$command\'\n";
+  if (!$dry_run2) {
+    log_message `$run2_wrapper \'$command 2>&1\'` . "\n";
+    my $status = $? >> 8;
+    if ($status) {
+      # the process died in some unexpected way
+      log_fatal "\nThe last command failed with exit status $status.\n";
+    }
+  }
+}
+
+sub run2_remote_with_output {
+  my $command = shift;
+
+  log_verbose "\n$run2_wrapper $command\n";
+  my $out = `$run2_wrapper $command 2>/dev/null`;
+  log_verbose "$out\n";
+  return $out;
+}
+
+
+##################################################
 ### main server routine
 
 sub handle {
@@ -159,6 +208,14 @@ sub handle {
 	}
       }
     }
+  }
+
+  ### now create a secondary backup if necessary
+
+  if ($configuration->{SECONDARY}) {
+      ### find the latest backup, if there is one,
+
+      log_fatal "Not implemented yet."
   }
 
   log_success "";

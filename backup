@@ -17,7 +17,7 @@ use strict;
 
 my $configuration =
   {
-   VERSION => "backup 2008-04-29",
+   VERSION => "backup 2009-03-07",
    CLIENT_BASEDIR => undef,
    SERVER_BASEDIR => undef,
    MODE => undef,
@@ -29,6 +29,8 @@ my $configuration =
    SERVER_LOG_FILE => "backup.log",
    SERVER_SSH_ID => "backup.ssh_id",
    SERVER => undef,
+   SECONDARY_SSH_ID => "backup2.ssh_id",
+   SECONDARY => 1,
    OPTIONS_RSYNC => undef,
    EMAIL_SUCC => undef,
    EMAIL_FAIL => undef,
@@ -65,6 +67,8 @@ my $usage = <<EOT
  --version              print version and exit
  --backup               make a fresh backup (default)
  --nobackup             do not make a fresh backup
+ --secondary            make a secondary backup (default, if defined)
+ --nosecondary          do not make a secondary backup
  --delete		delete obsolete backups (default)
  --nodelete		do not delete any old backups
 
@@ -123,6 +127,7 @@ my $opt_ssh;		# --ssh="<opts>"
 my $opt_rsync;          # --rsync="<opts>"
 my $opt_delete=1;       # --delete, --nodelete
 my $opt_backup=1;       # --backup, --nobackup
+my $opt_secondary=1;    # --secondary, --nosecondary
 my $opt_dry_run=0;      # --dry-run
 
 my $res = GetOptions
@@ -139,6 +144,7 @@ my $res = GetOptions
    "rsync=s"       => \$opt_rsync,
    "delete!"       => \$opt_delete,
    "backup!"       => \$opt_backup,
+   "secondary!"    => \$opt_secondary,
    "dry-run!"      => \$opt_dry_run
   );
 
@@ -158,6 +164,7 @@ $configuration->{VERBOSE} = $opt_verbose;
 $configuration->{QUIET} = $opt_quiet;
 $configuration->{DELETE} = $opt_delete;
 $configuration->{BACKUP} = $opt_backup;
+$configuration->{SECONDARY} = $opt_secondary;
 $configuration->{DRY_RUN} = $opt_dry_run;
 
 if (defined($opt_logfile)) {
