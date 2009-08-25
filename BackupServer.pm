@@ -145,7 +145,7 @@ sub handle {
       
     ### run rsync on the directory
 
-    run "rsync -azHS --delete $useropts $excludes -e \"ssh -i $sshid\" $from $to";
+    run "rsync -azHSx --delete $useropts $excludes -e \"ssh -i $sshid\" $from $to";
 
     ### rename the backup directory
 
