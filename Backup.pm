@@ -72,7 +72,7 @@ sub log_verbose {
     my $msg = shift;
     $log_string .= $msg;
     if (defined($log_file)) { print $log_handle $msg; }
-    if (!$log_quiet) { $| = 1; print $msg; }
+    if (!$log_quiet) { local $| = 1; print $msg; }
   }
 }
 
@@ -86,7 +86,7 @@ sub log_message {
 
   if (defined($log_file)) { print $log_handle $msg; }
 
-  if (!$log_quiet) { $| = 1; print $msg; }
+  if (!$log_quiet) { local $| = 1; print $msg; }
 }
 
 ##################################################
@@ -103,7 +103,7 @@ sub log_fatal {
   if (defined($log_file)) { print $log_handle $msg; $log_handle->close; }
 
   if (!$log_quiet) {
-    $| = 1; print $msg;
+    local $| = 1; print $msg;
   }
 
   if (defined($log_onfail)) {
@@ -128,7 +128,7 @@ sub log_success {
 
   if (defined($log_file)) { print $log_handle $msg; $log_handle->close; }
 
-  if (!$log_quiet) { $| = 1; print $msg; }
+  if (!$log_quiet) { local $| = 1; print $msg; }
 
   if (defined($log_onsucc)) {
     open (MAIL, "| mail -s \"Backup Success\" $log_onsucc");

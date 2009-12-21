@@ -3,7 +3,7 @@
 
 ##################################################
 
-use lib "/usr/local/backup";
+use lib "/home/andrej/project/backup";
 
 use Backup;
 use BackupClient;
