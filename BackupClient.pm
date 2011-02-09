@@ -248,6 +248,7 @@ sub handle {
 	  my $f = $b;
 	  $f =~ s|backup_(\d+_\d+_\d+_\d+_\d+_\d+)$|deleting_\1|;
 	  run_remote "mv $b $f";
+	  run_remote "chmod -R u+w $f";
 	  run_remote "rm -rf $f &";
 	  last;
 	}

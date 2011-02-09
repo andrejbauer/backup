@@ -203,6 +203,7 @@ sub handle {
 	  my $f = $b;
 	  $f =~ s|backup_(\d+_\d+_\d+_\d+_\d+_\d+)$|deleting_\1|;
 	  run "mv $b $f";
+	  run "chmod -R u+w $f";
 	  run "rm -rf $f";
 	  last;
 	}
