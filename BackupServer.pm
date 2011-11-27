@@ -216,7 +216,7 @@ sub handle {
   if ($configuration->{SECONDARY}) {
       ### find the latest backup, if there is one,
 
-      log_fatal "Secondary backups are not implemented yet."
+      log_message "*** Secondary backups are not implemented yet. ***"
   }
 
   log_success "";
